@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing Governance AI Agent - Enhanced LLD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f6f8;
+            overflow: hidden;
+        }
+        
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 15px;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .toolbar h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            flex: 1;
+        }
+        
+        .toolbar-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #4262ff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .toolbar-btn:hover {
+            background: #2947cc;
+            transform: translateY(-1px);
+        }
+        
+        .toolbar-btn.secondary {
+            background: #f0f1f3;
+            color: #1a1a1a;
+        }
+        
+        .toolbar-btn.secondary:hover {
+            background: #e0e2e5;
+        }
+        
+        .canvas-container {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: auto;
+        }
+        
+        .canvas {
+            position: relative;
+            width: 3500px;
+            height: 2500px;
+            background-image: 
+                radial-gradient(circle, #d1d5db 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: 0 0;
+        }
+        
+        .sticky-note {
+            position: absolute;
+            min-width: 200px;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            cursor: move;
+            transition: box-shadow 0.2s, transform 0.2s;
+            user-select: none;
+        }
+        
+        .sticky-note:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .sticky-note.dragging {
+            opacity: 0.8;
+            cursor: grabbing;
+            z-index: 999;
+        }
+        
+        .sticky-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .sticky-subtitle {
+            font-size: 12px;
+            opacity: 0.7;
+            line-height: 1.4;
+        }
+        
+        .user-node {
+            background: #fff7ed;
+            border: 2px solid #fb923c;
+            border-radius: 50px;
+        }
+        
+        .storage-node {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+        }
+        
+        .agent-node {
+            background: #d1fae5;
+            border: 2px solid #34d399;
+        }
+        
+        .process-node {
+            background: #dbeafe;
+            border: 2px solid #60a5fa;
+        }
+        
+        .output-node {
+            background: #fce7f3;
+            border: 2px solid #f472b6;
+        }
+        
+        .result-node {
+            background: #e9d5ff;
+            border: 2px solid #c084fc;
+            border-radius: 50px;
+        }
+        
+        .validation-node {
+            background: #fed7aa;
+            border: 2px solid #f97316;
+        }
+        
+        .knowledge-node {
+            background: #ccfbf1;
+            border: 2px solid #14b8a6;
+        }
+        
+        .connector {
+            position: absolute;
+            pointer-events: none;
+        }
+        
+        .connector-line {
+            stroke: #9ca3af;
+            stroke-width: 2;
+            fill: none;
+            marker-end: url(#arrow);
+        }
+        
+        .connector-line.bidirectional {
+            marker-start: url(#arrow-start);
+        }
+        
+        .connector-label {
+            font-size: 11px;
+            fill: #4b5563;
+            font-weight: 500;
+        }
+        
+        .legend-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            max-width: 320px;
+            z-index: 100;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .legend-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+        
+        .legend-section {
+            margin-bottom: 16px;
+        }
+        
+        .legend-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #4b5563;
+            text-transform: uppercase;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        
+        .legend-box {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 2px solid;
+            flex-shrink: 0;
+        }
+        
+        .zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 8px;
+            background: white;
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+        
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 6px;
+            background: #f0f1f3;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .zoom-btn:hover {
+            background: #e0e2e5;
+        }
+        
+        .use-case-panel {
+            position: fixed;
+            top: 80px;
+            left: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            max-width: 350px;
+            z-index: 100;
+        }
+        
+        .use-case-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+        
+        .use-case-text {
+            font-size: 12px;
+            line-height: 1.6;
+            color: #4b5563;
+            margin-bottom: 8px;
+        }
+        
+        .challenge-box {
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+        
+        .challenge-box strong {
+            color: #92400e;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .sticky-note {
+            animation: fadeIn 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h1>🎯 Testing Governance AI Agent - Enhanced Low Level Design</h1>
+        <button class="toolbar-btn secondary" onclick="resetPositions()">🔄 Reset Layout</button>
+        <button class="toolbar-btn" onclick="exportBoard()">📥 Download PNG</button>
+    </div>
+    
+    <div class="use-case-panel">
+        <div class="use-case-title">📋 Objective</div>
+        <div class="use-case-text">
+            AI Agent to guide teams on Testing documentation based on NT defined Testing standards, controls, procedures & evidences.
+        </div>
+        <div class="use-case-title" style="margin-top: 15px;">✨ Key Features</div>
+        <div class="use-case-text">
+            • Document compliance checking<br>
+            • Completeness & alignment validation<br>
+            • Expandable suggestions with details<br>
+            • Evidence requirements mapping
+        </div>
+        <div class="challenge-box">
+            <strong>⚠️ Challenge</strong>
+            <div class="use-case-text" style="margin: 5px 0 0 0;">
+                Document consistency and data quality issues across teams
+            </div>
+        </div>
+    </div>
+    
+    <div class="canvas-container" id="canvasContainer">
+        <svg class="canvas" id="canvas">
+            <defs>
+                <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+                    <polygon points="0 0, 10 5, 0 10" fill="#9ca3af" />
+                </marker>
+                <marker id="arrow-start" markerWidth="10" markerHeight="10" refX="1" refY="5" orient="auto">
+                    <polygon points="10 0, 0 5, 10 10" fill="#9ca3af" />
+                </marker>
+            </defs>
+            
+            <g id="connectors"></g>
+            <g id="nodes"></g>
+        </svg>
+    </div>
+    
+    <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomIn()">+</button>
+        <button class="zoom-btn" onclick="zoomOut()">−</button>
+        <button class="zoom-btn" onclick="resetZoom()">⟲</button>
+    </div>
+    
+    <div class="legend-panel">
+        <div class="legend-section">
+            <div class="legend-title">📋 Component Types</div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #fff7ed; border-color: #fb923c;"></div>
+                <span>User/Team Interface</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #fef3c7; border-color: #fbbf24;"></div>
+                <span>Document Storage</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #d1fae5; border-color: #34d399;"></div>
+                <span>AI Agent Core</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #dbeafe; border-color: #60a5fa;"></div>
+                <span>Processing Engine</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #fed7aa; border-color: #f97316;"></div>
+                <span>Validation Layer</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #ccfbf1; border-color: #14b8a6;"></div>
+                <span>Knowledge Base</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #fce7f3; border-color: #f472b6;"></div>
+                <span>Output/Suggestions</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #e9d5ff; border-color: #c084fc;"></div>
+                <span>User Interface</span>
+            </div>
+        </div>
+        
+        <div class="legend-section">
+            <div class="legend-section-title">🔄 Enhanced Features</div>
+            <div class="use-case-text">
+                ✅ Quality validation with scoring<br>
+                ✅ Data format specifications<br>
+                ✅ Interaction triggers defined<br>
+                ✅ MS Graph API integration<br>
+                ✅ Multi-layer comparison logic<br>
+                ✅ Expandable suggestions<br>
+                ✅ Evidence mapping<br>
+                ✅ Feedback & improvement loop
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        const nodes = [
+            { id: 'user', title: '👥 Testing Team', subtitle: 'Governance Team Members\n[Trigger: Manual Upload]', type: 'user-node', x: 200, y: 700 },
+            { id: 'input', title: '📤 Document Input', subtitle: 'Strategy & Plan Docs\n(.docx, .pdf)', type: 'storage-node', x: 550, y: 700 },
+            { id: 'validation', title: '🔍 Quality Validator', subtitle: 'Template Conformity Check\nCompleteness Scoring\nConsistency Validation', type: 'validation-node', x: 550, y: 450 },
+            { id: 'sharepoint', title: '📁 SharePoint', subtitle: 'Document Library\n(Testing Docs)\n[Event: File Upload]', type: 'storage-node', x: 900, y: 700 },
+            { id: 'connector', title: '🔌 MS Graph API', subtitle: 'Copilot Connector\nDocument Access Layer', type: 'process-node', x: 1100, y: 850 },
+            { id: 'copilot', title: '🤖 AI Governance Agent', subtitle: 'Copilot Studio\n(Testing Compliance Assistant)\n[Trigger: User Prompt]', type: 'agent-node', x: 1300, y: 700 },
+            { id: 'knowledge', title: '📚 NT Knowledge Base', subtitle: 'Standards | Controls\nProcedures | Evidences\n(JSON/XML Repository)', type: 'knowledge-node', x: 1300, y: 350 },
+            { id: 'comparison', title: '⚙️ Compliance Engine', subtitle: 'Compare Docs vs\nNT Standards & Procedures\n(NLP + Rule-based)', type: 'process-node', x: 1700, y: 700 },
+            { id: 'mapping', title: '🗺️ Evidence Mapper', subtitle: 'Map Requirements\nto Evidence Types\n(Structured Output)', type: 'process-node', x: 1700, y: 950 },
+            { id: 'response', title: '📝 Suggestion Generator', subtitle: 'Completeness Check\nAlignment Analysis\n(JSON Response)', type: 'output-node', x: 2100, y: 700 },
+            { id: 'expandable', title: '🔎 Detail Expander', subtitle: 'Drill-down for\nAdditional Context\n(Hierarchical Data)', type: 'output-node', x: 2100, y: 950 },
+            { id: 'output', title: '✅ Compliance Report', subtitle: 'Interactive Results\n& Recommendations\n(UI Render)', type: 'result-node', x: 2500, y: 700 },
+            { id: 'feedback', title: '🔄 Document Update', subtitle: 'Team implements\nsuggestions & re-validates\n[Loop Trigger]', type: 'user-node', x: 2500, y: 1100 }
+        ];
+        
+        const connections = [
+            { from: 'user', to: 'input', label: '📄 Uploads docs (.docx/.pdf)' },
+            { from: 'input', to: 'validation', label: '🔄 Pre-check (metadata scan)' },
+            { from: 'validation', to: 'sharepoint', label: '✅ Approved → Store' },
+            { from: 'input', to: 'sharepoint', label: '⚠️ Direct upload (bypass)', dashed: true },
+            { from: 'sharepoint', to: 'connector', label: '🔗 File upload event' },
+            { from: 'connector', to: 'copilot', label: '📊 Content + metadata (JSON)' },
+            { from: 'copilot', to: 'knowledge', label: '🔍 Query standards (REST API)', bidirectional: true },
+            { from: 'copilot', to: 'comparison', label: '🚀 Initiate analysis job' },
+            { from: 'comparison', to: 'mapping', label: '🎯 Evidence gaps (structured)' },
+            { from: 'comparison', to: 'response', label: '💡 Suggestions (JSON array)' },
+            { from: 'mapping', to: 'expandable', label: '📋 Detailed mapping (nested)' },
+            { from: 'response', to: 'output', label: '📦 Compiled report data' },
+            { from: 'expandable', to: 'output', label: '🔗 Expandable sections' },
+            { from: 'output', to: 'feedback', label: '👁️ Team reviews results' },
+            { from: 'feedback', to: 'input', label: '🔄 Re-submit updated docs', curved: true }
+        ];
+        
+        let draggedNode = null;
+        let offsetX = 0;
+        let offsetY = 0;
+        let currentZoom = 1;
+        
+        function createNodes() {
+            const nodesGroup = document.getElementById('nodes');
+            
+            nodes.forEach(node => {
+                const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                g.setAttribute('class', 'sticky-note ' + node.type);
+                g.setAttribute('data-id', node.id);
+                g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+                
+                const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+                foreignObject.setAttribute('width', '240');
+                foreignObject.setAttribute('height', '110');
+                foreignObject.setAttribute('x', '-120');
+                foreignObject.setAttribute('y', '-55');
+                
+                const div = document.createElement('div');
+                div.className = 'sticky-note ' + node.type;
+                div.style.width = '100%';
+                div.style.height = '100%';
+                div.style.display = 'flex';
+                div.style.flexDirection = 'column';
+                div.style.justifyContent = 'center';
+                div.style.alignItems = 'center';
+                div.innerHTML = `
+                    <div class="sticky-title">${node.title}</div>
+                    <div class="sticky-subtitle">${node.subtitle}</div>
+                `;
+                
+                foreignObject.appendChild(div);
+                g.appendChild(foreignObject);
+                nodesGroup.appendChild(g);
+                
+                g.addEventListener('mousedown', startDrag);
+            });
+        }
+        
+        function drawConnections() {
+            const connectorsGroup = document.getElementById('connectors');
+            connectorsGroup.innerHTML = '';
+            
+            connections.forEach(conn => {
+                const fromNode = nodes.find(n => n.id === conn.from);
+                const toNode = nodes.find(n => n.id === conn.to);
+                
+                if (fromNode && toNode) {
+                    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    g.setAttribute('class', 'connector');
+                    
+                    let path;
+                    if (conn.curved) {
+                        const midX = fromNode.x + 300;
+                        const midY = Math.max(fromNode.y, toNode.y) + 200;
+                        path = `M ${fromNode.x} ${fromNode.y} Q ${midX} ${midY} ${toNode.x} ${toNode.y}`;
+                    } else {
+                        path = `M ${fromNode.x} ${fromNode.y} L ${toNode.x} ${toNode.y}`;
+                    }
+                    
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    line.setAttribute('d', path);
+                    line.setAttribute('class', conn.bidirectional ? 'connector-line bidirectional' : 'connector-line');
+                    if (conn.dashed) {
+                        line.setAttribute('stroke-dasharray', '5,5');
+                        line.style.opacity = '0.5';
+                    }
+                    
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    const textX = (fromNode.x + toNode.x) / 2;
+                    const textY = conn.curved ? Math.max(fromNode.y, toNode.y) + 200 : (fromNode.y + toNode.y) / 2 - 10;
+                    text.setAttribute('x', textX);
+                    text.setAttribute('y', textY);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('class', 'connector-label');
+                    text.textContent = conn.label;
+                    
+                    g.appendChild(line);
+                    g.appendChild(text);
+                    connectorsGroup.appendChild(g);
+                }
+            });
+        }
+        
+        function startDrag(e) {
+            draggedNode = e.currentTarget;
+            draggedNode.classList.add('dragging');
+            
+            const transform = draggedNode.getAttribute('transform');
+            const match = transform.match(/translate\(([^,]+),([^)]+)\)/);
+            const currentX = parseFloat(match[1]);
+            const currentY = parseFloat(match[2]);
+            
+            offsetX = e.clientX / currentZoom - currentX;
+            offsetY = e.clientY / currentZoom - currentY;
+            
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+        
+        function drag(e) {
+            if (draggedNode) {
+                const newX = e.clientX / currentZoom - offsetX;
+                const newY = e.clientY / currentZoom - offsetY;
+                
+                draggedNode.setAttribute('transform', `translate(${newX}, ${newY})`);
+                
+                const nodeId = draggedNode.getAttribute('data-id');
+                const node = nodes.find(n => n.id === nodeId);
+                node.x = newX;
+                node.y = newY;
+                
+                drawConnections();
+            }
+        }
+        
+        function stopDrag() {
+            if (draggedNode) {
+                draggedNode.classList.remove('dragging');
+                draggedNode = null;
+            }
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+        
+        function resetPositions() {
+            nodes.forEach((node, i) => {
+                const originalNode = [
+                    { x: 200, y: 700 },
+                    { x: 550, y: 700 },
+                    { x: 550, y: 450 },
+                    { x: 900, y: 700 },
+                    { x: 1100, y: 850 },
+                    { x: 1300, y: 700 },
+                    { x: 1300, y: 350 },
+                    { x: 1700, y: 700 },
+                    { x: 1700, y: 950 },
+                    { x: 2100, y: 700 },
+                    { x: 2100, y: 950 },
+                    { x: 2500, y: 700 },
+                    { x: 2500, y: 1100 }
+                ][i];
+                node.x = originalNode.x;
+                node.y = originalNode.y;
+            });
+            
+            document.getElementById('nodes').innerHTML = '';
+            createNodes();
+            drawConnections();
+        }
+        
+        function zoomIn() {
+            currentZoom = Math.min(currentZoom + 0.1, 2);
+            applyZoom();
+        }
+        
+        function zoomOut() {
+            currentZoom = Math.max(currentZoom - 0.1, 0.5);
+            applyZoom();
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            applyZoom();
+        }
+        
+        function applyZoom() {
+            const canvas = document.getElementById('canvas');
+            canvas.style.transform = `scale(${currentZoom})`;
+            canvas.style.transformOrigin = 'top left';
+        }
+        
+        function exportBoard() {
+            const btn = document.querySelector('.toolbar-btn:not(.secondary)');
+            btn.textContent = '⏳ Generating...';
+            btn.disabled = true;
+            
+            html2canvas(document.getElementById('canvas'), {
+                backgroundColor: '#f5f6f8',
+                scale: 2
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'Testing_Governance_AI_Agent_LLD.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                btn.textContent = '✅ Downloaded!';
+                setTimeout(() => {
+                    btn.textContent = '📥 Download PNG';
+                    btn.disabled = false;
+                }, 2000);
+            });
+        }
+        
+        createNodes();
+        drawConnections();
+    </script>
+</body>
+</html>
