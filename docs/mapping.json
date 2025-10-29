@@ -1,0 +1,70 @@
+{
+  "projectId": "PRJ0023965",
+  "changeId": "CHG001057684",
+  "controls": [
+    {
+      "id": "PRC.TS.01",
+      "name": "Test Requirements Analysis review for Escalated Major Events",
+      "type": "Non-Key Control",
+      "requiredEvidence": [
+        {
+          "name": "SDLC Governance and Quality Management review",
+          "keywords": [
+            "SDLC Governance and Quality Management review",
+            "Governance Review Form",
+            "Quality Management"
+          ]
+        }
+      ],
+      "controlElements": ["Governance and Quality Management review"],
+      "documentSections": ["Refer: SDLC Governance and Quality Management Review Form"]
+    },
+    {
+      "id": "PRC.TS.02",
+      "name": "Test Requirements Analysis",
+      "type": "Key Control",
+      "requiredEvidence": [
+        {
+          "name": "MBOT Test Plan / Release Test Plan",
+          "keywords": [
+            "Test Plan",
+            "MBOT TestPlan",
+            "Release Test Plan"
+          ]
+        },
+        {
+          "name": "Impact Analysis Template",
+          "keywords": [
+            "Impact Analysis",
+            "Change Impact Analysis",
+            "Impact Analysis Template"
+          ]
+        }
+      ],
+      "controlElements": [
+        "Testing Scope",
+        "Acceptance Criteria",
+        "Definition of Done for Testing",
+        "Testing Estimates",
+        "Change Impact Analysis"
+      ],
+      "documentSections": ["Section 4", "Section 7", "Section 10", "Section 4.3", "Section 4.4"]
+    },
+    {
+      "id": "PRC.TS.03",
+      "name": "Test Strategy Development review for Escalated Major Events",
+      "type": "Non-Key Control",
+      "requiredEvidence": [
+        {
+          "name": "SDLC Governance and Quality Management review",
+          "keywords": [
+            "SDLC Governance and Quality Management review",
+            "Governance Review Form"
+          ]
+        }
+      ],
+      "controlElements": ["Testing Scope"],
+      "documentSections": ["Slides 12 to 24", "Refer: Review Form"]
+    }
+  ]
+}
