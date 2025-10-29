@@ -6,14 +6,15 @@
   <title>Compliance Evidence Validator - MVP Demo</title>
   <style>
     body{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f6f7fb;margin:0}
-    header{background:#fff;border-bottom:1px solid #e0e0e0;padding:14px 18px;display:flex;gap:10px;align-items:center}
+    header{background:#fff;border-bottom:1px solid #e0e0e0;padding:14px 18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     h1{font-size:16px;margin:0;font-weight:600}
-    main{max-width:1000px;margin:20px auto;padding:0 16px}
+    main{max-width:1100px;margin:20px auto;padding:0 16px}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
     textarea{width:100%;min-height:220px;padding:12px;border-radius:8px;border:1px solid #d9d9df;background:#fff;font-size:13px}
     .card{background:#fff;border:1px solid #e5e6eb;border-radius:10px;padding:14px}
     .btn{border:none;border-radius:8px;padding:10px 14px;background:#4262ff;color:#fff;cursor:pointer;font-size:13px}
     .btn.secondary{background:#f0f1f3;color:#1a1a1a}
+    .btn.warn{background:#f59e0b;color:#1a1a1a}
     table{width:100%;border-collapse:collapse;margin-top:10px}
     th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;font-size:12px}
     th{background:#fafafa}
@@ -22,6 +23,8 @@
     .status-missing{color:#c02e2e;font-weight:600}
     .small{font-size:12px;color:#666}
     footer{margin-top:24px;color:#666;font-size:12px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    input[type=text]{border:1px solid #d9d9df;border-radius:8px;padding:8px;font-size:13px}
   </style>
 </head>
 <body>
@@ -29,8 +32,16 @@
     <h1>Compliance Evidence Validator - MVP Demo</h1>
     <button class="btn secondary" onclick="loadSample()">Load Sample Text</button>
     <button class="btn" onclick="runValidation()">Run Validation</button>
+    <button class="btn warn" onclick="exportJson()">Export JSON</button>
+    <button class="btn warn" onclick="exportCsv()">Download CSV</button>
+    <button class="btn" onclick="copyServiceNowPayload()">Copy ServiceNow Payload</button>
   </header>
   <main>
+    <div class="row" style="margin-bottom:10px">
+      <span class="small">ProjectId</span><input id="projectId" type="text" value="PRJ0023965">
+      <span class="small">ChangeId</span><input id="changeId" type="text" value="CHG001057684">
+      <span class="small">Ticket</span><input id="ticketNumber" type="text" placeholder="SNC-000123">
+    </div>
     <div class="grid">
       <div class="card">
         <h3 class="small">Paste document text (from Test Plan/Strategy/Review Form)</h3>
@@ -46,15 +57,15 @@
       <div id="results"></div>
     </div>
     <footer>
-      MVP logic: simple keyword and section matching against mapping.json. In production, integrate file conversion + section extraction via Graph/Syntex/Document Intelligence and post results to SharePoint/Teams.
+      MVP logic: keyword and section matching against mapping.json, producing structured JSON and CSV suitable for automation. In production, integrate Graph/Syntex/Document Intelligence, write results to a SharePoint list, and post a Teams Adaptive Card from a Power Automate flow triggered by a ServiceNow ticket.
     </footer>
   </main>
   <script>
-    let mapping = null;
+    let mapping = null; let lastRows = null;
     async function loadMapping(){
       const res = await fetch('mapping.json');
       mapping = await res.json();
-      const html = [`Project: ${mapping.projectId}`, `Change: ${mapping.changeId}`, '', ...mapping.controls.map(c=>`• ${c.id} — ${c.name}`)].join('<br>');
+      const html = [`Project (map): ${mapping.projectId}`, `Change (map): ${mapping.changeId}`, '', ...mapping.controls.map(c=>`• ${c.id} — ${c.name} (${c.type})`)].join('<br>');
       document.getElementById('mappingInfo').innerHTML = html;
     }
     function loadSample(){
@@ -62,40 +73,99 @@
       document.getElementById('docText').value = sample;
     }
     function normalize(t){return (t||'').toLowerCase();}
+    function score(foundCount,total){ if(total===0) return 1; const r=foundCount/total; return Math.round(r*100)/100; }
     function runValidation(){
       if(!mapping){alert('Mapping not loaded yet');return}
       const text = normalize(document.getElementById('docText').value);
       const rows = [];
       mapping.controls.forEach(ctrl=>{
-        // evidence checks
         let evidenceFound = 0; const evidenceDetails=[];
         ctrl.requiredEvidence.forEach(ev=>{
-          const found = ev.keywords.some(k=> text.includes(normalize(k)));
-          evidenceFound += found?1:0;
-          evidenceDetails.push({name: ev.name, found});
+          const found = (ev.keywords||[]).some(k=> text.includes(normalize(k)));
+          evidenceFound += found?1:0; evidenceDetails.push({name: ev.name, found});
         });
-        // control elements
         let elementsFound = 0; const elementDetails=[];
-        (ctrl.controlElements||[]).forEach(el=>{
-          const found = text.includes(normalize(el));
-          elementsFound += found?1:0;
-          elementDetails.push({name: el, found});
-        });
-        const evRatio = ctrl.requiredEvidence.length? evidenceFound/ctrl.requiredEvidence.length : 1;
-        const elRatio = ctrl.controlElements && ctrl.controlElements.length? elementsFound/ctrl.controlElements.length : 1;
-        const overall = (evRatio>0.99 && elRatio>0.99)? 'Fully Compliant' : ((evRatio>0 && elRatio>0)? 'Partially Compliant' : 'Missing Evidence');
-        rows.push({ctrl, evidenceDetails, elementDetails, overall});
+        (ctrl.controlElements||[]).forEach(el=>{ const found = text.includes(normalize(el)); elementsFound += found?1:0; elementDetails.push({name: el, found}); });
+        const evRatio = score(evidenceFound, ctrl.requiredEvidence.length);
+        const elRatio = score(elementsFound, (ctrl.controlElements||[]).length);
+        const overall = (evRatio>=0.99 && elRatio>=0.99)? 'Fully Compliant' : ((evRatio>0 && elRatio>0)? 'Partially Compliant' : 'Missing Evidence');
+        const ctrlScore = Math.round(((evRatio + elRatio)/2)*100)/100;
+        rows.push({ctrl, evidenceDetails, elementDetails, overall, evRatio, elRatio, ctrlScore});
       });
-      // render
-      let html = '<table><thead><tr><th>Control</th><th>Evidence</th><th>Elements</th><th>Status</th></tr></thead><tbody>';
+      lastRows = rows; renderResults(rows);
+    }
+    function renderResults(rows){
+      let html = '<table><thead><tr><th>Control</th><th>Evidence</th><th>Elements</th><th>Status</th><th>Score</th></tr></thead><tbody>';
       rows.forEach(r=>{
         const evText = r.evidenceDetails.map(d=>`${d.found?'✅':'❌'} ${d.name}`).join('<br>');
         const elText = r.elementDetails.map(d=>`${d.found?'✅':'❌'} ${d.name}`).join('<br>');
         const cls = r.overall==='Fully Compliant'? 'status-ok' : (r.overall==='Partially Compliant'? 'status-partial' : 'status-missing');
-        html += `<tr><td><strong>${r.ctrl.id}</strong><br>${r.ctrl.name}</td><td>${evText}</td><td>${elText}</td><td class="${cls}">${r.overall}</td></tr>`;
+        html += `<tr><td><strong>${r.ctrl.id}</strong><br>${r.ctrl.name}</td><td>${evText}</td><td>${elText}</td><td class="${cls}">${r.overall}</td><td>${(r.ctrlScore*100).toFixed(0)}%</td></tr>`;
       });
       html += '</tbody></table>'; 
       document.getElementById('results').innerHTML = html;
+    }
+    function generateComplianceJson(){
+      const meta = {
+        projectId: document.getElementById('projectId').value || mapping.projectId,
+        changeId: document.getElementById('changeId').value || mapping.changeId,
+        ticketNumber: document.getElementById('ticketNumber').value || null,
+        runTimestamp: new Date().toISOString()
+      };
+      const controls = (lastRows||[]).map(r=>({
+        id: r.ctrl.id,
+        name: r.ctrl.name,
+        type: r.ctrl.type,
+        status: r.overall,
+        score: r.ctrlScore,
+        evidence: r.evidenceDetails.map(d=>({name:d.name,found:d.found})),
+        elements: r.elementDetails.map(d=>({name:d.name,found:d.found})),
+        expectedSections: r.ctrl.documentSections||[]
+      }));
+      const summary = {
+        totalControls: controls.length,
+        fully: controls.filter(c=>c.status==='Fully Compliant').length,
+        partial: controls.filter(c=>c.status==='Partially Compliant').length,
+        missing: controls.filter(c=>c.status==='Missing Evidence').length
+      };
+      return { meta, summary, controls };
+    }
+    function exportJson(){
+      if(!lastRows){alert('Run validation first');return}
+      const data = generateComplianceJson();
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'compliance_result.json'; a.click();
+    }
+    function exportCsv(){
+      if(!lastRows){alert('Run validation first');return}
+      const cols = ['ControlId','ControlName','Type','Status','Score','Evidence','Elements'];
+      const rows = (lastRows||[]).map(r=>[
+        r.ctrl.id,
+        r.ctrl.name.replace(/\n/g,' '),
+        r.ctrl.type||'',
+        r.overall,
+        (r.ctrlScore*100).toFixed(0)+'%',
+        r.evidenceDetails.map(d=>`${d.found?'YES':'NO'}:${d.name}`).join('; '),
+        r.elementDetails.map(d=>`${d.found?'YES':'NO'}:${d.name}`).join('; ')
+      ]);
+      const csv = [cols.join(','), ...rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='compliance_result.csv'; a.click();
+    }
+    function copyServiceNowPayload(){
+      if(!lastRows){alert('Run validation first');return}
+      const payload = generateComplianceJson();
+      // Example minimal fields for ServiceNow custom table / record producer
+      const sn = {
+        ticket_number: payload.meta.ticketNumber || 'SNC-TBD',
+        project_id: payload.meta.projectId,
+        change_id: payload.meta.changeId,
+        run_timestamp: payload.meta.runTimestamp,
+        summary: payload.summary,
+        controls: payload.controls
+      };
+      navigator.clipboard.writeText(JSON.stringify(sn)).then(()=>{
+        alert('ServiceNow payload copied to clipboard');
+      });
     }
     loadMapping();
   </script>
