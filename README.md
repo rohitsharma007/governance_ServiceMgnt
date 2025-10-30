@@ -1,6 +1,6 @@
 # Governance Service Management — Compliance Demo
 
-This repository hosts a lightweight, automation-ready demo focused on the compliance core of the cricket process flow. It demonstrates how to validate evidence against mapped controls and produce structured outputs that can be consumed by ServiceNow, SharePoint, Teams, or other systems.
+This repository hosts a lightweight, automation-ready demo focused on the compliance core of the cricket process flow. It demonstrates how to validate evidence against mapped controls and produce structured outputs consumable by SharePoint, Teams, or other systems.
 
 ## Contents
 - `docs/lld_flow.html` — Interactive LLD flow diagram of the end-to-end process.
@@ -20,14 +20,12 @@ This repository hosts a lightweight, automation-ready demo focused on the compli
 - Outputs:
   - `Export JSON` — Structured compliance result with `meta`, `summary`, and per-control details.
   - `Download CSV` — Flat table for quick review or ingestion.
-  - `Copy ServiceNow Payload` — Compact object ready to post to ServiceNow via Record Producer or Scripted REST.
 - Metadata inputs (top of the page):
-  - `ProjectId`, `ChangeId`, `Ticket` — Used to tie a run to a ServiceNow record.
+  - `ProjectId`, `ChangeId` — Used to tie a run to project/change context.
 
 ## JSON Structure
-The JSON export and ServiceNow payload are built from the same core structure:
 - `meta`:
-  - `projectId`, `changeId`, `ticketNumber`, `runTimestamp`
+  - `projectId`, `changeId`, `runTimestamp`
 - `summary`:
   - `totalControls`, `fully`, `partial`, `missing`
 - `controls[]` (for each control):
@@ -46,17 +44,6 @@ The JSON export and ServiceNow payload are built from the same core structure:
 
 You can extend `mapping.json` to reflect your compliance framework, project taxonomy, and document structure.
 
-## ServiceNow Integration (Example)
-- Payload fields (`Copy ServiceNow Payload`):
-  - `ticket_number`, `project_id`, `change_id`, `run_timestamp`, `summary`, `controls`
-- Options:
-  - Record Producer (portal) → create a “Compliance Run” record.
-  - Scripted REST API → `POST` payload into a scoped table.
-  - Flow Designer → receive payload, persist data, attach CSV/JSON to a ticket, notify via Teams/Email.
-- Suggested minimal table schema:
-  - Parent: `u_compliance_run` with `u_ticket_number`, `u_project_id`, `u_change_id`, `u_run_timestamp`, `u_summary_json`
-  - Child: `u_compliance_control` with `u_run` (ref), `u_control_id`, `u_status`, `u_score`, `u_evidence_json`, `u_elements_json`
-
 ## GitHub Pages (Optional)
 To publish `docs/*` via GitHub Pages:
 - In GitHub → Settings → Pages → Source: select `main` and `/root` or `/docs`.
@@ -64,8 +51,8 @@ To publish `docs/*` via GitHub Pages:
 
 ## Production Path
 - Replace simple keyword matching with robust parsing (SharePoint Syntex, Graph, Azure Document Intelligence).
-- Automate triggers from ServiceNow on ticket creation/update (Flow Designer or webhooks).
-- Persist results to SharePoint lists or ServiceNow tables; post Teams Adaptive Cards for reviewer approval.
+- Automate triggers (e.g., when a file enters a library or metadata changes) to run validation and persist results.
+- Persist results to SharePoint lists; post Teams Adaptive Cards for reviewer approval.
 - Add error handling, audit logs, retention/versioning in SharePoint.
 
 ## Notes

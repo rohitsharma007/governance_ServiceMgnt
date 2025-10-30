@@ -34,13 +34,13 @@
     <button class="btn" onclick="runValidation()">Run Validation</button>
     <button class="btn warn" onclick="exportJson()">Export JSON</button>
     <button class="btn warn" onclick="exportCsv()">Download CSV</button>
-    <button class="btn" onclick="copyServiceNowPayload()">Copy ServiceNow Payload</button>
+
   </header>
   <main>
     <div class="row" style="margin-bottom:10px">
       <span class="small">ProjectId</span><input id="projectId" type="text" value="PRJ0023965">
       <span class="small">ChangeId</span><input id="changeId" type="text" value="CHG001057684">
-      <span class="small">Ticket</span><input id="ticketNumber" type="text" placeholder="SNC-000123">
+
     </div>
     <div class="grid">
       <div class="card">
@@ -57,7 +57,7 @@
       <div id="results"></div>
     </div>
     <footer>
-      MVP logic: keyword and section matching against mapping.json, producing structured JSON and CSV suitable for automation. In production, integrate Graph/Syntex/Document Intelligence, write results to a SharePoint list, and post a Teams Adaptive Card from a Power Automate flow triggered by a ServiceNow ticket.
+      MVP logic: keyword and section matching against mapping.json, producing structured JSON and CSV suitable for automation. In production, integrate Graph/Syntex/Document Intelligence, write results to a SharePoint list, and post a Teams Adaptive Card from a review flow.
     </footer>
   </main>
   <script>
@@ -109,7 +109,7 @@
       const meta = {
         projectId: document.getElementById('projectId').value || mapping.projectId,
         changeId: document.getElementById('changeId').value || mapping.changeId,
-        ticketNumber: document.getElementById('ticketNumber').value || null,
+
         runTimestamp: new Date().toISOString()
       };
       const controls = (lastRows||[]).map(r=>({
@@ -151,22 +151,7 @@
       const csv = [cols.join(','), ...rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','))].join('\n');
       const blob = new Blob([csv],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='compliance_result.csv'; a.click();
     }
-    function copyServiceNowPayload(){
-      if(!lastRows){alert('Run validation first');return}
-      const payload = generateComplianceJson();
-      // Example minimal fields for ServiceNow custom table / record producer
-      const sn = {
-        ticket_number: payload.meta.ticketNumber || 'SNC-TBD',
-        project_id: payload.meta.projectId,
-        change_id: payload.meta.changeId,
-        run_timestamp: payload.meta.runTimestamp,
-        summary: payload.summary,
-        controls: payload.controls
-      };
-      navigator.clipboard.writeText(JSON.stringify(sn)).then(()=>{
-        alert('ServiceNow payload copied to clipboard');
-      });
-    }
+
     loadMapping();
   </script>
 </body>
