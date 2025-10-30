@@ -31,9 +31,11 @@
   <header>
     <h1>Compliance Evidence Validator - MVP Demo</h1>
     <button class="btn secondary" onclick="loadSample()">Load Sample Text</button>
-    <button class="btn" onclick="runValidation()">Run Validation</button>
-    <button class="btn warn" onclick="exportJson()">Export JSON</button>
-    <button class="btn warn" onclick="exportCsv()">Download CSV</button>
+            <button class="btn" onclick="runValidation()">Run Validation</button>
+            <button class="btn secondary" onclick="loadMappingJson()">Load JSON Mapping</button>
+            <button class="btn secondary" onclick="loadMappingCsv()">Load CSV Mapping</button>
+            <button class="btn warn" onclick="exportJson()">Export JSON</button>
+            <button class="btn warn" onclick="exportCsv()">Download CSV</button>
 
   </header>
   <main>
@@ -62,11 +64,161 @@
   </main>
   <script>
     let mapping = null; let lastRows = null;
+    async function loadMappingJson(){
+      try {
+        const resp = await fetch('mapping.json');
+        mapping = await resp.json();
+        const html = [`Project (map): ${mapping.projectId || ''}`, `Change (map): ${mapping.changeId || ''}`, '', ...mapping.controls.map(c=>`• ${c.id} — ${c.name} (${c.type})`)].join('<br>');
+        document.getElementById('mappingInfo').innerHTML = html;
+      } catch (e) {
+        console.error('Failed to load mapping', e);
+        document.getElementById('mappingInfo').textContent = 'Failed to load mapping.json';
+      }
+    }
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [];
+      let field = '';
+      let i = 0;
+      let inQuotes = false;
+      while (i < text.length) {
+        const char = text[i];
+        if (inQuotes) {
+          if (char === '"') {
+            if (text[i + 1] === '"') {
+              field += '"';
+              i += 2;
+              continue;
+            } else {
+              inQuotes = false;
+              i++;
+              continue;
+            }
+          } else {
+            field += char;
+            i++;
+            continue;
+          }
+        } else {
+          if (char === '"') {
+            inQuotes = true;
+            i++;
+            continue;
+          }
+          if (char === ',') {
+            row.push(field);
+            field = '';
+            i++;
+            continue;
+          }
+          if (char === '\n') {
+            row.push(field);
+            rows.push(row);
+            row = [];
+            field = '';
+            i++;
+            continue;
+          }
+          if (char === '\r') {
+            i++;
+            continue;
+          }
+          field += char;
+          i++;
+        }
+      }
+      if (field.length > 0 || row.length > 0) {
+        row.push(field);
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function normalizeHeader(h) {
+      return (h || '').trim().toLowerCase();
+    }
+
+    function convertCsvToMapping(rows) {
+      if (!rows || rows.length === 0) return { controls: [] };
+      const header = rows[0].map(normalizeHeader);
+      const idx = {
+        controlId: header.indexOf('control id'),
+        controlName: header.indexOf('control name'),
+        processType: header.indexOf('process type'),
+        process: header.indexOf('process'),
+        source: header.indexOf('source'),
+        artefacts: header.findIndex(h => h.startsWith('control guidelines')),
+        keyControl: header.indexOf('key control or non-key control'),
+        frequency: header.indexOf('frequency'),
+        responsible: header.indexOf('responsible party'),
+        notes: header.indexOf('notes')
+      };
+      const controls = [];
+      for (let r = 1; r < rows.length; r++) {
+        const row = rows[r];
+        const id = idx.controlId >= 0 ? (row[idx.controlId] || '').trim() : '';
+        const name = idx.controlName >= 0 ? (row[idx.controlName] || '').trim() : '';
+        if (!id && !name) continue;
+        const type = idx.process >= 0 ? (row[idx.process] || '').trim() : (idx.processType >= 0 ? (row[idx.processType] || '').trim() : '');
+        const artefactsRaw = idx.artefacts >= 0 ? (row[idx.artefacts] || '') : '';
+        const sourceRaw = idx.source >= 0 ? (row[idx.source] || '') : '';
+        const keyFlag = idx.keyControl >= 0 ? (row[idx.keyControl] || '').trim() : '';
+        const frequency = idx.frequency >= 0 ? (row[idx.frequency] || '').trim() : '';
+        const responsible = idx.responsible >= 0 ? (row[idx.responsible] || '').trim() : '';
+        const notes = idx.notes >= 0 ? (row[idx.notes] || '').trim() : '';
+
+        const requiredEvidence = [];
+        if (artefactsRaw) {
+          const lines = String(artefactsRaw).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+          for (const ln of lines) {
+            const cleaned = ln.replace(/^[-•]+\s*/, '').trim();
+            if (!cleaned) continue;
+            requiredEvidence.push({ name: cleaned, keywords: [cleaned.toLowerCase()] });
+          }
+        }
+
+        const controlElements = [];
+        if (sourceRaw) {
+          String(sourceRaw).split(/[\/,;|]+/).map(s => s.trim()).filter(Boolean).forEach(s => controlElements.push(s));
+        }
+
+        controls.push({
+          id: id || name,
+          name: name || id,
+          type: type || 'Testing',
+          requiredEvidence,
+          controlElements,
+          documentSections: [],
+          meta: {
+            keyControl: keyFlag,
+            frequency,
+            responsible,
+            notes
+          }
+        });
+      }
+      return { controls };
+    }
+
+    async function loadMappingCsv(){
+      try {
+        const csvPath = encodeURI('../governance_doc/6.17.2025 System Development, Acquisition,Maintenance - testing Controls');
+        const resp = await fetch(csvPath);
+        if (!resp.ok) throw new Error('HTTP '+resp.status);
+        const text = await resp.text();
+        const rows = parseCsv(text);
+        mapping = convertCsvToMapping(rows);
+        const html = [`Project (map): ${mapping.projectId || ''}`, `Change (map): ${mapping.changeId || ''}`, '', ...mapping.controls.map(c=>`• ${c.id} — ${c.name} (${c.type})`)].join('<br>');
+        document.getElementById('mappingInfo').innerHTML = html;
+      } catch (e) {
+        console.error('Failed to load CSV mapping', e);
+        document.getElementById('mappingInfo').textContent = 'Failed to load CSV mapping';
+      }
+    }
+
     async function loadMapping(){
-      const res = await fetch('mapping.json');
-      mapping = await res.json();
-      const html = [`Project (map): ${mapping.projectId}`, `Change (map): ${mapping.changeId}`, '', ...mapping.controls.map(c=>`• ${c.id} — ${c.name} (${c.type})`)].join('<br>');
-      document.getElementById('mappingInfo').innerHTML = html;
+      return loadMappingJson();
     }
     function loadSample(){
       const sample = `SDLC Governance and Quality Management review has been completed using the Governance Review Form.\n\nTest Plan: CASH August Release Test Plan V0.1.1 includes Testing Scope, Acceptance Criteria, Definition of Done for Testing and Testing Estimates. Change Impact Analysis is documented in the Impact Analysis Template.\n\nTest Strategy slides 12 to 24 describe the Testing Scope.`;
