@@ -3,68 +3,78 @@
   "changeId": "CHG001057684",
   "controls": [
     {
-      "id": "PRC.TS.01",
-      "name": "Test Requirements Analysis review for Escalated Major Events",
-      "type": "Non-Key Control",
+      "id": "C1",
+      "name": "Test Plan completeness",
+      "type": "Testing Governance",
       "requiredEvidence": [
-        {
-          "name": "SDLC Governance and Quality Management review",
-          "keywords": [
-            "SDLC Governance and Quality Management review",
-            "Governance Review Form",
-            "Quality Management"
-          ]
-        }
+        { "name": "Test Plan", "keywords": ["test plan"] },
+        { "name": "Testing Scope", "keywords": ["testing scope","scope"] },
+        { "name": "Acceptance Criteria", "keywords": ["acceptance criteria"] },
+        { "name": "Definition of Done", "keywords": ["definition of done"] },
+        { "name": "Testing Estimates", "keywords": ["testing estimates","estimate"] }
       ],
-      "controlElements": ["Governance and Quality Management review"],
-      "documentSections": ["Refer: SDLC Governance and Quality Management Review Form"]
+      "controlElements": ["version","owner","approval"],
+      "documentSections": ["Plan Overview","Scope","Acceptance Criteria","DoD","Estimates"]
     },
     {
-      "id": "PRC.TS.02",
-      "name": "Test Requirements Analysis",
-      "type": "Key Control",
+      "id": "C2",
+      "name": "Test Strategy defined",
+      "type": "Testing Governance",
       "requiredEvidence": [
-        {
-          "name": "MBOT Test Plan / Release Test Plan",
-          "keywords": [
-            "Test Plan",
-            "MBOT TestPlan",
-            "Release Test Plan"
-          ]
-        },
-        {
-          "name": "Impact Analysis Template",
-          "keywords": [
-            "Impact Analysis",
-            "Change Impact Analysis",
-            "Impact Analysis Template"
-          ]
-        }
+        { "name": "Test Strategy", "keywords": ["test strategy"] },
+        { "name": "Scope/Approach", "keywords": ["scope","approach"] },
+        { "name": "Risks & Assumptions", "keywords": ["risk","assumption"] }
       ],
-      "controlElements": [
-        "Testing Scope",
-        "Acceptance Criteria",
-        "Definition of Done for Testing",
-        "Testing Estimates",
-        "Change Impact Analysis"
-      ],
-      "documentSections": ["Section 4", "Section 7", "Section 10", "Section 4.3", "Section 4.4"]
+      "controlElements": ["slides","strategy document","review"],
+      "documentSections": ["Strategy Summary","Approach","Risks"]
     },
     {
-      "id": "PRC.TS.03",
-      "name": "Test Strategy Development review for Escalated Major Events",
-      "type": "Non-Key Control",
+      "id": "C3",
+      "name": "Change Impact Analysis completed",
+      "type": "Change Governance",
       "requiredEvidence": [
-        {
-          "name": "SDLC Governance and Quality Management review",
-          "keywords": [
-            "SDLC Governance and Quality Management review",
-            "Governance Review Form"
-          ]
-        }
+        { "name": "Impact Analysis", "keywords": ["impact analysis","change impact"] },
+        { "name": "Risk Assessment", "keywords": ["risk assessment","risk"] },
+        { "name": "Affected Systems/Components", "keywords": ["affected systems","affected components"] }
       ],
-      "controlElements": ["Testing Scope"],
-      "documentSections": ["Slides 12 to 24", "Refer: Review Form"]
+      "controlElements": ["template","approval","owner"],
+      "documentSections": ["Impact Summary","Risks","Affected Areas"]
+    },
+    {
+      "id": "C4",
+      "name": "Governance/Quality Review performed",
+      "type": "Quality Management",
+      "requiredEvidence": [
+        { "name": "Governance Review Form", "keywords": ["governance review form","quality management review"] },
+        { "name": "Reviewer", "keywords": ["reviewer","peer review"] },
+        { "name": "Findings/Actions", "keywords": ["findings","actions"] }
+      ],
+      "controlElements": ["peer review","sign-off","date"],
+      "documentSections": ["Review Summary","Findings","Actions"]
+    },
+    {
+      "id": "C5",
+      "name": "Test Execution evidence",
+      "type": "Testing Execution",
+      "requiredEvidence": [
+        { "name": "Test Cases", "keywords": ["test cases","test case"] },
+        { "name": "Results & Defects", "keywords": ["results","defect","pass rate"] },
+        { "name": "Traceability", "keywords": ["traceability","requirement mapping"] }
+      ],
+      "controlElements": ["evidence attachments","logs","summary"],
+      "documentSections": ["Execution Summary","Defects","Traceability"]
+    },
+    {
+      "id": "C6",
+      "name": "Acceptance & Release readiness",
+      "type": "Release Governance",
+      "requiredEvidence": [
+        { "name": "Acceptance/Sign-off", "keywords": ["acceptance","sign-off","sign off"] },
+        { "name": "Go/No-Go", "keywords": ["go/no-go","go no go"] },
+        { "name": "Release Notes", "keywords": ["release notes"] }
+      ],
+      "controlElements": ["approver","date","version"],
+      "documentSections": ["Acceptance","Decision","Release Notes"]
     }
   ]
 }
